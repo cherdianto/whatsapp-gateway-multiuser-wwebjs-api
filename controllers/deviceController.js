@@ -151,6 +151,7 @@ const scanQrcode = asyncHandler(async (req, res) => {
     let io = req.io
     // const jwtId = req.params.userid
     const id = req.device._id
+    const cronTask = req.cronTask
 
     // const user = await User.findById(jwtId)
     // if (!user) {
@@ -247,15 +248,23 @@ const logout = asyncHandler(async (req, res) => {
         throw new Error("DEVICE_NOT_ACTIVE")
     }
 
+    // console.log(sessions)
+
+    // if(!sessions.hasOwnProperty(id)){
+    //     res.status(400)
+    //     throw new Error("DEVICE_NOT_ACTIVE")
+    // }
+
     try {
-        sessions[id].logout()
-    
+        await sessions[id].logout()
+        // console.log(dropConnection)
         res.status(200).json({
             status: true,
             message: "LOGOUT_SUCCESS",
             id
         })
     } catch (error) {
+        console.log(error)
         // console.log('logout failed ' + id)
         res.status(500)
         throw new Error("LOGOUT_FAILED")

@@ -12,7 +12,7 @@ const Schema = new mongoose.Schema({
         ref: 'User'
     },
     to: {
-        type: Number,
+        type: String,
         required: true
     },
     isGroup: {
@@ -36,8 +36,9 @@ const Schema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending','sent', 'read', 'failed'],
-        default: 'pending'
+        enum: ['1','2', '3', '4'],
+        default: '1'
+        // pending: 1, sent: 2, read:3, failed: 4
     },
     time: {
         type: String,

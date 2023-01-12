@@ -15,6 +15,7 @@ const mongoose = require('mongoose')
 // const ejs = require('ejs')
 const path = require('path')
 const asyncHandler = require('express-async-handler')
+const cron = require('node-cron')
 const dotenv = require('dotenv')
 const env = dotenv.config().parsed
 
@@ -25,10 +26,12 @@ const messageRouter = require('./routers/messageRouter')
 const verifyToken = require('./middlewares/verifyToken');
 const activeDeviceId = require('./libraries/activeDeviceId');
 const Device = require('./models/Device');
+const Message = require('./models/Message');
 const libsession = require('./session');
 const bypassVariable = require('./middlewares/bypassVariable');
 const sessionInit = require('./libraries/sessionInit');
 const sessionListeners = require('./libraries/sessionListeners');
+const rewritePhone = require('./libraries/rewritePhone');
 // const asyncHandler = require('express-async-handler')
 
 // const fs = require('fs')
@@ -97,8 +100,8 @@ app.use(express.urlencoded({
 
 // routers
 app.use('/auth', authRouter)
-app.use('/device', bypassVariable(io, sessions), deviceRouter)
-app.use('/message', messageRouter)
+app.use('/device', bypassVariable({io, sessions, cronTask}), deviceRouter)
+app.use('/message', bypassVariable({io, sessions, cronTask}), messageRouter)
 
 // app.get('/get-state', async (req, res) => {
 //     const id = req.body.id

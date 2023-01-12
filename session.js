@@ -8,6 +8,8 @@ const dbConnection = require('./libraries/dbConnect')
 // const mongoose = require('mongoose')
 const cron = require('node-cron')
 const path = require('path')
+const Message = require('./models/Message')
+const rewritePhone = require('./libraries/rewritePhone')
 const dotenv = require('dotenv')
 const env = dotenv.config().parsed
 const app = express()
@@ -94,6 +96,7 @@ const session = ({io, id, sessions, cronTask}) => {
             io.sockets.in(`${id}`).emit('statusConnection', statusConnection[id]);
             // io.sockets.in(`${id}`).emit("qr", url);
             io.sockets.in(`${id}`).emit('close');
+            // io.sockets.disconnect()
             console.log(id + ' is auth-ed, close the user,s window')
         });
     })
@@ -103,13 +106,74 @@ const session = ({io, id, sessions, cronTask}) => {
         console.log(id + ' is auth-ed')
     });
     
-    sessions[id].on('ready', () => {
-        now = new Date().toLocaleString();
+    sessions[id].on('ready', async () => {
+        // now = new Date().toLocaleString();
         console.log(id + ' whatsapp ready')
+        
+        await Device.findByIdAndUpdate(
+            id,
+            { $set: { connectionStatus: 'connected'} }
+        )
 
-        const interval = '*/30 * * * * *'
-        cronTask[id] = cron.schedule(interval, function() {
-            console.log('cron task ' + id)
+        cronTask[id] = cron.schedule('*/20 * * * * *', async () => {
+            const response = await Message.findOne({
+                deviceId: id,
+                status: '1'
+            }).sort({
+                priority: -1,
+                time: 1
+            })
+            if (!response) {
+                console.log('no task left')
+                console.log('cron idle ' + id)
+                await Device.findByIdAndUpdate(
+                    id,
+                    { $set: { cronIdle: true } }
+                )
+                cronTask[id].stop()
+                return
+            }
+
+            try {
+                const normalizedPhone = rewritePhone(response.to)
+                const checkUser = await sessions[id].isRegisteredUser(normalizedPhone)
+
+                if (!checkUser) {
+                    console.log('invalid destination ' + normalizedPhone)
+                    await Message.findByIdAndUpdate(
+                        response._id, {
+                            $set: {
+                                status: '4'
+                            }
+                        }, {
+                            new: true
+                        }
+                    )
+                    throw new Error('invalid destination')
+                }
+                sessions[id].sendMessage(normalizedPhone, response.message)
+            } catch (error) {
+                console.log(error)
+                return
+            }
+
+
+            const updating = await Message.findByIdAndUpdate(
+                response._id, {
+                    $set: {
+                        status: '2'
+                    }
+                }, {
+                    new: true
+                }
+            )
+
+            if (!updating) {
+                console.log('updating status error')
+                return
+            }
+
+            console.log('send message ' + response.message)
         })
 
         cronTask[id].start()
