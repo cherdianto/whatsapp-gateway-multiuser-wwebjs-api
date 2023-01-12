@@ -184,11 +184,7 @@ const scanQrcode = asyncHandler(async (req, res) => {
     console.log('scan ' + id)
 
     try {
-        await libsession({
-            io,
-            id,
-            sessions
-        })
+        await libsession({io, id, sessions, cronTask})
         res.render('index')
     } catch (error) {
         console.log(error)

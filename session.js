@@ -6,6 +6,7 @@ const socketIO = require('socket.io');
 const dbConnection = require('./libraries/dbConnect')
 // const {MongoStore} = require('wwebjs-mongo')
 // const mongoose = require('mongoose')
+const cron = require('node-cron')
 const path = require('path')
 const dotenv = require('dotenv')
 const env = dotenv.config().parsed
@@ -21,7 +22,7 @@ app.set('view engine', 'ejs');
 // let sessions = {}
 let rooms = []
 
-const session = ({io, id, sessions}) => {
+const session = ({io, id, sessions, cronTask}) => {
 
     const pptOptions = {
         puppeteer: {
@@ -105,6 +106,13 @@ const session = ({io, id, sessions}) => {
     sessions[id].on('ready', () => {
         now = new Date().toLocaleString();
         console.log(id + ' whatsapp ready')
+
+        const interval = '*/30 * * * * *'
+        cronTask[id] = cron.schedule(interval, function() {
+            console.log('cron task ' + id)
+        })
+
+        cronTask[id].start()
     });
     
     sessions[id].on('auth_failure', function (session) {

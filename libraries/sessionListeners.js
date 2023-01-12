@@ -1,6 +1,7 @@
 const qrcode = require('qrcode');
+const cron = require('node-cron')
 
-const sessionListeners = (sessions, id) => {
+const sessionListeners = ({sessions, id, cronTask}) => {
     // activate the listeners
     sessions[id].on('qr', (qr) => {
         now = new Date().toLocaleString();
@@ -18,6 +19,12 @@ const sessionListeners = (sessions, id) => {
     sessions[id].on('ready', () => {
         now = new Date().toLocaleString();
         console.log(id + ' whatsapp ready')
+
+        cronTask[id] = cron.schedule('* * * * *', function() {
+            console.log('cron task ' + id)
+        })
+
+        cronTask[id].start()
     });
     
     sessions[id].on('auth_failure', function (session) {

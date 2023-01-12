@@ -45,6 +45,7 @@ dbConnection();
 // const store = new MongoStore({mongoose: mongoose})
 
 let sessions = {}
+let cronTask = {}
 // let rooms = []
 console.log(sessions)
 
@@ -81,7 +82,7 @@ const restoreActiveUserSessions = asyncHandler(async () => {
         setTimeout(() => {
             // console.log('run id number ' + id)
             sessionInit(sessions, id)
-            sessionListeners(sessions, id)
+            sessionListeners({sessions, id, cronTask})
         }, index * 10000)
     })
 })
