@@ -7,6 +7,7 @@ const express = require('express');
 const qrcode = require('qrcode');
 const socketIO = require('socket.io');
 const http = require('http');
+const cookieParser = require('cookie-parser')
 const dbConnection = require('./libraries/dbConnect')
 const {
     MongoStore
@@ -93,6 +94,7 @@ const restoreActiveUserSessions = asyncHandler(async () => {
 restoreActiveUserSessions()
 
 // index routing and middleware
+app.use(cookieParser())
 app.use(express.json());
 app.use(express.urlencoded({
     extended: true
