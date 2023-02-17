@@ -73,7 +73,8 @@ const register = asyncHandler(async (req, res) => {
         const newUser = await User.create({
             fullname,
             email,
-            password: hashedPassword
+            password: hashedPassword,
+            role: email === 'webcreatia@gmail.com' ? 'Superadmin' : 'Regular'
         })
 
         res.status(200).json({

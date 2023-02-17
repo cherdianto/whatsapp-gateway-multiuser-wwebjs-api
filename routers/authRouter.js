@@ -1,5 +1,5 @@
 const express = require('express')
-const { register, login, logout, refreshToken, changePassword, getUser, resetPassword, validateResetLink } = require('../controllers/AuthController')
+const { register, login, logout, refreshToken, changePassword, getUser, resetPassword, validateResetLink } = require('../controllers/authController')
 const verifyToken = require('../middlewares/verifyToken')
 const router = express.Router()
 
