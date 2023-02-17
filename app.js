@@ -50,7 +50,7 @@ app.set('view engine', 'ejs');
 // MIDDLEWARES
 if(process.env.ENV === 'dev'){
     app.use(cors({credentials: true, origin: `${process.env.CLIENT_URL_DEV}`}));
-} else if (process.env.ENV === 'prod') {
+} else {
     app.use(cors({credentials: true, origin: `${process.env.CLIENT_URL_PROD}`}));
 }
 // const store = new MongoStore({mongoose: mongoose})
@@ -74,7 +74,7 @@ const restoreActiveUserSessions = asyncHandler(async () => {
     // })
 
     const devices = await Device.find({
-        status: true,
+        status: 'active',
         connectionStatus: 'connected' //it is to prevent
     })
 
@@ -82,7 +82,7 @@ const restoreActiveUserSessions = asyncHandler(async () => {
     let activeDevices = []
     // users.forEach(user => {
         devices.forEach(device => {
-            // if (device.status === true) {
+            // if (device.status === 'active') {
                 activeDevices.push(device._id.valueOf())
             // }
         })

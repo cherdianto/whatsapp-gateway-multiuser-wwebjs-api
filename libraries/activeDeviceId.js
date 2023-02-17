@@ -5,7 +5,7 @@ const activeDeviceId = async (deviceId, user) => {
         // console.log(number === device.number)
         console.log(device.id)
         console.log(deviceId)
-        if(device.id == deviceId && device.status === true) {//found
+        if(device.id == deviceId && device.status === 'active') {//found
             return true
         }
 

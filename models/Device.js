@@ -13,8 +13,9 @@ const Schema = new mongoose.Schema({
         type: String
     },
     status: {
-        type: Boolean,
-        default: false
+        type: String,
+        enum: ['active', 'inactive'],
+        default: 'inactive'
     },
     connectionStatus: {
         type: String,

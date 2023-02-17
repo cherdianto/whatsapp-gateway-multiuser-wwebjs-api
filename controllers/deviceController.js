@@ -72,6 +72,10 @@ const updateDevice = asyncHandler(async (req, res) => {
     const deviceId = req.params.deviceid
     console.log(deviceId)
 
+    if(req.user.role === 'Regular' ){
+         delete req.body.status
+    }
+
     const response = await Device.findOneAndUpdate({
         _id: deviceId
     }, {
