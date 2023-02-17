@@ -6,6 +6,7 @@ const {
 const express = require('express');
 const qrcode = require('qrcode');
 const socketIO = require('socket.io');
+const morgan = require('morgan')
 const http = require('http');
 const cookieParser = require('cookie-parser')
 const dbConnection = require('./libraries/dbConnect')
@@ -17,6 +18,7 @@ const mongoose = require('mongoose')
 const path = require('path')
 const asyncHandler = require('express-async-handler')
 const cron = require('node-cron')
+const cors = require('cors')
 const dotenv = require('dotenv')
 const env = dotenv.config().parsed
 
@@ -41,11 +43,16 @@ const server = http.createServer(app)
 const io = socketIO(server)
 
 const PORT = env.PORT
+dbConnection();
 
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
-
-dbConnection();
+// MIDDLEWARES
+if(process.env.ENV === 'dev'){
+    app.use(cors({credentials: true, origin: `${process.env.CLIENT_URL_DEV}`}));
+} else if (process.env.ENV === 'prod') {
+    app.use(cors({credentials: true, origin: `${process.env.CLIENT_URL_PROD}`}));
+}
 // const store = new MongoStore({mongoose: mongoose})
 
 let sessions = {}
@@ -67,7 +74,8 @@ const restoreActiveUserSessions = asyncHandler(async () => {
     // })
 
     const devices = await Device.find({
-        status: true
+        status: true,
+        connectionStatus: 'connected' //it is to prevent
     })
 
     // get all active devices from active users
@@ -80,11 +88,11 @@ const restoreActiveUserSessions = asyncHandler(async () => {
         })
     // })
 
-    console.log(activeDevices)
+    console.log('active devices : ' + activeDevices)
     // restore each client
     activeDevices.forEach((id, index) => {
         setTimeout(() => {
-            // console.log('run id number ' + id)
+            console.log('run id number ' + id)
             sessionInit(sessions, id)
             sessionListeners({sessions, id, cronTask})
         }, index * 10000)
@@ -96,6 +104,7 @@ restoreActiveUserSessions()
 // index routing and middleware
 app.use(cookieParser())
 app.use(express.json());
+app.use(morgan('dev'));
 app.use(express.urlencoded({
     extended: true
 }));

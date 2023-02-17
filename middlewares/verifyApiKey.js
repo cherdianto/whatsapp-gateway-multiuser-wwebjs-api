@@ -10,7 +10,8 @@ const env = dotenv.config().parsed
 const verifyApiKey = asyncHandler(async (req, res, next) => {
     // let userId = ''
 
-    const apiKey = req.query.key
+    const apiKey = req.query.key || req.body.key
+    console.log(req.body)
 
     if (!apiKey) {
         res.status(401)

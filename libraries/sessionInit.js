@@ -7,7 +7,7 @@ const {
 const sessionInit = (sessions, id) => {
     const pptOptions = {
         puppeteer: {
-            headless: true,
+            headless: false,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',

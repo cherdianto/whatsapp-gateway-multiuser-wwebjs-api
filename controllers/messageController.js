@@ -26,7 +26,7 @@ const addMessage = asyncHandler(async(req, res) => {
         priority = req.query.priority,
     } = req.body
 
-    console.log(isGroup)
+    console.log('isGroup : ' + isGroup)
 
     if(!to) {
         res.status(400)
@@ -104,7 +104,20 @@ const queuMessage = asyncHandler( async(req, res) => {
     })
 })
 
+const getMessages = asyncHandler(async(req, res) => {
+    const userId = req.user._id
+
+    const message = await Message.find({userId}).populate('deviceId')
+
+    res.status(200).json({
+        status: true,
+        message: "GET_USER_DEVICE_SUCCESS",
+        messages: message
+    })
+})
+
 module.exports = {
     addMessage,
-    queuMessage
+    queuMessage,
+    getMessages
 }

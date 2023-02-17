@@ -9,7 +9,7 @@ const Schema = new mongoose.Schema({
     deviceId: {
         type: mongoose.Types.ObjectId,
         required: true,
-        ref: 'User'
+        ref: 'Device'
     },
     to: {
         type: String,

@@ -13,19 +13,21 @@ const activeSession = require('../middlewares/activeSession')
 function generateApiKey() {
     const buffer = crypto.randomBytes(32);
     return crypto.createHash('sha256').update(buffer).digest('hex');
-  }
+}
 
-const addDevice = asyncHandler(async(req, res) => {
+const addDevice = asyncHandler(async (req, res) => {
     // const userId = req.user._id
     const number = req.body.number
-    
-    if(!number) {
+
+    if (!number) {
         res.status(400)
         throw new Error("UNAUTHORIZED")
     }
 
-    const isDuplicateNumber = await Device.findOne({number: number})
-    if(isDuplicateNumber) {
+    const isDuplicateNumber = await Device.findOne({
+        number: number
+    })
+    if (isDuplicateNumber) {
         res.status(400)
         throw new Error("NUMBER_ALREADY_EXIST")
     }
@@ -38,7 +40,7 @@ const addDevice = asyncHandler(async(req, res) => {
     })
 
     newDevice.save(async (error, device) => {
-        if(error){
+        if (error) {
             res.status(500)
             throw new Error("ADD_DEVICE_FAILED")
         }
@@ -49,7 +51,7 @@ const addDevice = asyncHandler(async(req, res) => {
             }
         })
 
-        if(!user){
+        if (!user) {
             res.status(500)
             throw new Error("ADD_DEVICE_FAILED")
         }
@@ -62,23 +64,25 @@ const addDevice = asyncHandler(async(req, res) => {
     })
 })
 
-const updateDevice = asyncHandler(async(req, res) => {
+const updateDevice = asyncHandler(async (req, res) => {
     // @usage: internal api
     // note: will only be used for front end to edit the device detail from the device table
 
     console.log('update device')
     const deviceId = req.params.deviceid
+    console.log(deviceId)
 
-    const response = await Device.findOneAndUpdate(
-        {_id: deviceId},
-        {
-            $set: req.body
-        },
-        { new: true }
-    )
+    const response = await Device.findOneAndUpdate({
+        _id: deviceId
+    }, {
+        $set: req.body
+    }, {
+        new: true
+    })
 
-    if(!response){
+    if (!response) {
         res.status(500)
+        console.log(response)
         throw new Error("UPDATE_DEVICE_FAILED")
     }
     res.status(200).json({
@@ -90,11 +94,11 @@ const updateDevice = asyncHandler(async(req, res) => {
 
 // @usage: internal api
 // note: will only be used for front end to edit the device detail from the device table
-const deleteDevice = asyncHandler(async(req, res) => {
+const deleteDevice = asyncHandler(async (req, res) => {
     const deviceId = req.params.deviceid
     const device = await Device.findById(deviceId)
 
-    if(!device){
+    if (!device) {
         res.status(400)
         throw new Error("DEVICE_NOT_FOUND")
     }
@@ -102,18 +106,22 @@ const deleteDevice = asyncHandler(async(req, res) => {
     Device.findByIdAndDelete(
         deviceId,
         async (error, deletedDevice) => {
-            if(error){
+            if (error) {
                 res.status(500)
                 throw new Error("DELETE_DEVICE_FAILED")
             }
-            
+
             const user = await User.findByIdAndUpdate(
-                req.user._id,
-                { $pull: { devices: deletedDevice._id}},
-                { new: true }
+                req.user._id, {
+                    $pull: {
+                        devices: deletedDevice._id
+                    }
+                }, {
+                    new: true
+                }
             )
 
-            if(!user){
+            if (!user) {
                 res.status(500)
                 throw new Error("DELETE_DEVICE_FAILED")
             }
@@ -124,7 +132,7 @@ const deleteDevice = asyncHandler(async(req, res) => {
     //     res.status(500)
     //     throw new Error("DELETE_DEVICE_FAILED")
     // }
-    
+
     res.status(200).json({
         status: true,
         message: "DELETE_DEVICE_SUCCESS"
@@ -132,10 +140,12 @@ const deleteDevice = asyncHandler(async(req, res) => {
     })
 })
 
-const showDevices = asyncHandler(async(req, res) => {
+const showDevices = asyncHandler(async (req, res) => {
     const userId = req.user._id
 
-    const device = await Device.find({userId})
+    const device = await Device.find({
+        userId
+    })
 
     res.status(200).json({
         status: true,
@@ -153,6 +163,7 @@ const scanQrcode = asyncHandler(async (req, res) => {
     const id = req.device._id
     const cronTask = req.cronTask
 
+    console.log(sessions)
     // const user = await User.findById(jwtId)
     // if (!user) {
     //     res.status(400)
@@ -165,19 +176,28 @@ const scanQrcode = asyncHandler(async (req, res) => {
     //     res.status(400)
     //     throw new Error("ACTIVE_DEVICE_NOT_FOUND")
     // }
-    if(!mongoose.Types.ObjectId.isValid(id)){
+    // const hasActiveSession = await activeSession(sessions, id)
+    // if(hasActiveSession){
+    //     console.log('logout existing, rescan')
+    //     // await sessions[id].destroy()
+    //     // await sessions[id].logout()
+    // } else {
+    //     console.log('no session')
+    // }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
         res.status(400)
         throw new Error("INVALID_ID")
     }
 
     const device = await Device.findById(id)
 
-    if(!device){
+    if (!device) {
         res.status(400)
         throw new Error("DEVICE_NOT_FOUND")
     }
 
-    if(device.status === false){
+    if (device.status === false) {
         res.status(400)
         throw new Error("DEVICE_NOT_ACTIVE")
     }
@@ -185,7 +205,12 @@ const scanQrcode = asyncHandler(async (req, res) => {
     console.log('scan ' + id)
 
     try {
-        await libsession({io, id, sessions, cronTask})
+        await libsession({
+            io,
+            id,
+            sessions,
+            cronTask
+        })
         res.render('index')
     } catch (error) {
         console.log(error)
@@ -207,17 +232,23 @@ const destroy = asyncHandler(async (req, res) => {
 
     // CHECK WHETHER DEVICE ACTIVE OR NOT (HAS SESSION OR NOT)
     const hasActiveSession = await activeSession(sessions, id)
-    if(!hasActiveSession){
+    if (!hasActiveSession) {
         res.status(400)
         throw new Error("DEVICE_NOT_ACTIVE")
     }
 
     try {
         const response = sessions[id].destroy()
-        
-        // if(response){
-        //     await User.find
-        // }
+
+        if (response) {
+            await Device.findByIdAndUpdate(
+                id, {
+                    $set: {
+                        connectionStatus: 'disconnected'
+                    }
+                }
+            )
+        }
 
         res.status(200).json({
             status: true,
@@ -233,7 +264,7 @@ const destroy = asyncHandler(async (req, res) => {
 
 const logout = asyncHandler(async (req, res) => {
     const id = req.device._id
-    // console.log('logout ' + id)
+    console.log('logout ' + id)
     const sessions = req.sessions
 
     // if(id != req.device._id){
@@ -243,7 +274,7 @@ const logout = asyncHandler(async (req, res) => {
 
     // CHECK WHETHER DEVICE ACTIVE OR NOT (HAS SESSION OR NOT)
     const hasActiveSession = await activeSession(sessions, id)
-    if(!hasActiveSession){
+    if (!hasActiveSession) {
         res.status(400)
         throw new Error("DEVICE_NOT_ACTIVE")
     }
@@ -258,17 +289,18 @@ const logout = asyncHandler(async (req, res) => {
     try {
         await sessions[id].logout()
         // console.log(dropConnection)
-        res.status(200).json({
-            status: true,
-            message: "LOGOUT_SUCCESS",
-            id
-        })
     } catch (error) {
         console.log(error)
         // console.log('logout failed ' + id)
         res.status(500)
         throw new Error("LOGOUT_FAILED")
     }
+
+    res.status(200).json({
+        status: true,
+        message: "LOGOUT_SUCCESS",
+        id
+    })
 })
 
 const getState = asyncHandler(async (req, res) => {
@@ -282,14 +314,14 @@ const getState = asyncHandler(async (req, res) => {
 
     // CHECK WHETHER DEVICE ACTIVE OR NOT (HAS SESSION OR NOT)
     const hasActiveSession = await activeSession(sessions, id)
-    if(!hasActiveSession){
+    if (!hasActiveSession) {
         res.status(400)
         throw new Error("DEVICE_NOT_ACTIVE")
     }
 
     try {
         const response = sessions[id].getState()
-    
+
         res.status(200).json({
             status: true,
             message: "GET_STATE_SUCCESS",
@@ -310,12 +342,16 @@ const createApiKey = asyncHandler(async (req, res) => {
 
     // update user device apikey
     const device = await Device.findByIdAndUpdate(
-        deviceId,
-        { $set: { apiKey: newApiKey }},
-        { new: true }
+        deviceId, {
+            $set: {
+                apiKey: newApiKey
+            }
+        }, {
+            new: true
+        }
     )
 
-    if(!device){
+    if (!device) {
         res.status(400)
         throw new Error("NEW_API_KEY_FAILED")
     }

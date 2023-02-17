@@ -8,13 +8,13 @@ const router = express.Router()
 router.post('/add', verifyToken, addDevice)
 
 // @url : {{domain}}/device/update/{{deviceId}}
-router.post('/update/:deviceid', verifyToken, updateDevice)
+router.put('/update/:deviceid', verifyToken, updateDevice)
 
 // @url : {{domain}}/device/delete/{{deviceId}}
 router.delete('/delete/:deviceid', verifyToken, deleteDevice)
 
 // @url : {{domain}}/device/show-devices
-router.get('/show-devices', verifyToken, showDevices) 
+router.get('/all', verifyToken, showDevices) 
 
 // @url : {{domain}}/device/new-api-key/{{deviceId}}
 router.get('/new-api-key/:deviceid', verifyToken, createApiKey) 
