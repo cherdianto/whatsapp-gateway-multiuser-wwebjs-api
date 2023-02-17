@@ -11,6 +11,6 @@ router.get('/logout', logout)
 router.post('/change-password', verifyToken, changePassword)
 router.get('/reset-password', resetPassword)
 router.get('/rst', validateResetLink)
-router.get('/refreshToken', verifyToken, refreshToken)
+router.get('/refresh-token', refreshToken)
 
 module.exports = router

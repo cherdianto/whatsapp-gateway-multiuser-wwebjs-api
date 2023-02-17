@@ -26,6 +26,14 @@ const Schema = new mongoose.Schema({
     refreshToken: {
         type: String
     },
+    accessToken: {
+        type: String
+    }, 
+    role: {
+        type: String,
+        enum: ['Superadmin', 'Admin', 'Regular'],
+        default: 'Regular'
+    },
     salt: {
         type: String
     },

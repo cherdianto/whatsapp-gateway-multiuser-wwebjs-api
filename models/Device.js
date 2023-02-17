@@ -23,6 +23,10 @@ const Schema = new mongoose.Schema({
     apiKey: {
         type: String
     },
+    cronIdle: {
+        type: Boolean,
+        default: true
+    },
     createdAt: {
         type: Number
     },

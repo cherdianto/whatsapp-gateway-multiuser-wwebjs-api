@@ -54,11 +54,11 @@ const register = asyncHandler(async (req, res) => {
         throw new Error('PASSWORD_REQUIRED')
     }
 
-    const userExist = await User.findOne({
+    const isEmailExist = await User.findOne({
         email: email
     })
 
-    if (userExist) {
+    if (isEmailExist) {
         res.status(400)
         throw new Error('DUPLICATE_EMAIL')
     }
@@ -70,7 +70,7 @@ const register = asyncHandler(async (req, res) => {
 
     // store user info to DB
     try {
-        const user = await User.create({
+        const newUser = await User.create({
             fullname,
             email,
             password: hashedPassword
@@ -79,7 +79,7 @@ const register = asyncHandler(async (req, res) => {
         res.status(200).json({
             status: true,
             message: 'USER_REGISTER_SUCCESS',
-            user
+            // newUser
         })
 
     } catch (error) {
@@ -112,7 +112,7 @@ const login = asyncHandler(async (req, res) => {
 
     if (!user) {
         res.status(400)
-        throw new Error("EMAIL_NOT_FOUND")
+        throw new Error("USER_NOT_FOUND")
     }
 
     // password match?
@@ -131,49 +131,92 @@ const login = asyncHandler(async (req, res) => {
         id: user._id
     })
 
-    // store refreshToken to database
-    const updateDb = await User.updateOne({
+    // store refreshToken to database, return new data with some select and populate
+    const updatedUserDb = await User.findOneAndUpdate({
         _id: user._id
     }, {
         $set: {
-            refreshToken
+            refreshToken,
+            accessToken
         }
-    })
+    }).select('-password -refreshToken').populate('devices')
 
-    if (!updateDb) {
+    if (!updatedUserDb) {
         res.status(500)
         throw new Error("ERROR_UPDATE_DB")
     }
 
-    // if updateDB success, thenset cookies 
-    res.cookie('refreshToken', refreshToken, {
-        maxAge: 24 * 60 * 60 * 1000,
-        httpOnly: true
-    })
-    // return
+    // if updatedUserDb success, then set cookies 
+    if (env.ENV === 'dev') {
+        res.cookie('refreshToken', refreshToken, {
+            maxAge: 1 * 24 * 60 * 60 * 1000,
+            httpOnly: true
+        })
+    } else {
+        res.cookie('refreshToken', refreshToken, {
+            maxAge: 1 * 24 * 60 * 60 * 1000,
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+            domain: env.COOKIE_OPTION_PROD_URL,
+            path: '/'
+        })
+    }
+
     res.status(200).json({
         status: true,
         message: "LOGIN_SUCCESS",
-        fullname: user.fullname,
-        accessToken,
-        refreshToken
+        user: updatedUserDb
     })
 })
 
 const logout = asyncHandler(async (req, res) => {
     const userRefreshToken = req.cookies.refreshToken
+    console.log(req.cookies)
 
     if (!userRefreshToken) {
         res.status(204)
-        throw new Error("USER_NOT_LOGGED_IN")
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+            domain: env.COOKIE_OPTION_PROD_URL,
+            path: '/'
+        })
+        // throw new Error("NO_REFRESH_TOKEN")
+        return res.status(200).json({
+            status: true,
+            message: "LOGGED_OUT_SUCCESS_1"
+        })
     }
 
-    const user = await User.findOne({
-        refreshToken: userRefreshToken
-    })
+    // #NOTE : tidak bisa ada async await throw error inside jwt verify error. 
+    const decoded = jwt.verify(userRefreshToken, refreshSecretKey)
+
+    if (env.ENV === 'dev') {
+        res.clearCookie('refreshToken')
+    } else {
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+            domain: env.COOKIE_OPTION_PROD_URL,
+            path: '/'
+        })
+    }
+
+    if (!decoded) {
+        res.status(401)
+        throw new Error("INVALID_REFRESH_TOKEN")
+        // return Promise.reject("INVALID_REFRESH_TOKEN")
+    }
+
+    const user = await User.findById(decoded.id)
+
     if (!user) {
-        res.status(204)
-        throw new Error("USER_NOT_LOGGED_IN")
+        res.status(401)
+        // throw new Error("USER_NOT_FOUND")
+        return Promise.reject("USER_NOT_FOUND")
     }
 
     // update database
@@ -181,7 +224,8 @@ const logout = asyncHandler(async (req, res) => {
         _id: user._id
     }, {
         $set: {
-            refreshToken: ''
+            refreshToken: '',
+            accessToken: ''
         }
     })
 
@@ -189,8 +233,6 @@ const logout = asyncHandler(async (req, res) => {
         res.status(500)
         throw new Error("LOG_OUT_FAILED")
     }
-
-    res.clearCookie('refreshToken')
 
     return res.status(200).json({
         status: true,
@@ -202,29 +244,24 @@ const changePassword = asyncHandler(async (req, res) => {
     // form : email, oldpassword, newpassword
 
     const {
-        email,
         oldPassword,
-        newPassword
+        newPassword,
+        confirmNewPassword
     } = req.body
 
+    console.log(oldPassword)
+    console.log(newPassword)
+    console.log(confirmNewPassword)
     const user = req.user
-
-    // console.log(email)
-    // console.log(user)
-
-    if (!email || email == '') {
-        res.status(400)
-        throw new Error("EMAIL_REQUIRED")
-    }
-
-    // if(!oldPassword || oldPassword == ''){
-    //     res.status(400)
-    //     throw new Error("OLD_PASSWORD_REQUIRED")
-    // }
 
     if (!newPassword || newPassword == '') {
         res.status(400)
         throw new Error("NEW_PASSWORD_REQUIRED")
+    }
+
+    if (newPassword !== confirmNewPassword ) {
+        res.status(400)
+        throw new Error("NEW PASSWORD MISMATCH")
     }
 
     if (newPassword.trim().length === 0 || newPassword.includes(" ")) {
@@ -232,20 +269,7 @@ const changePassword = asyncHandler(async (req, res) => {
         throw new Error("PASSWORD_CONTAIN_SPACE")
     }
 
-    if (email !== user.email) {
-        res.status(400)
-        throw new Error("EMAIL_NOT_FOUND")
-    }
-
-    const oldUserData = await User.findOne({
-        email
-    })
-    if (!oldUserData) {
-        res.status(400)
-        throw new Error("USER_NOT_FOUND")
-    }
-
-    const isMatch = bcrypt.compareSync(oldPassword, oldUserData.password)
+    const isMatch = bcrypt.compareSync(oldPassword, user.password)
     if (!isMatch) {
         res.status(400)
         throw new Error("WRONG_PASSWORD")
@@ -284,36 +308,33 @@ const refreshToken = asyncHandler(async (req, res) => {
         throw new Error("REFRESH_TOKEN_NOT_FOUND")
     }
 
-    const user = await User.findOne({
-        refreshToken: userRefreshToken
-    })
+    const decoded = jwt.verify(userRefreshToken, refreshSecretKey)
+    console.log(decoded)
+    if (!decoded) {
+        res.status(401)
+        throw new Error("INVALID_REFRESH_TOKEN")
+    }
+
+    const user = await User.findById(decoded.id)
 
     if (!user) {
         res.status(401)
-        throw new Error("USER_NOT_LOGGED_IN")
+        throw new Error("USER_NOT_FOUND")
     }
 
-    jwt.verify(userRefreshToken, refreshSecretKey, (error, decoded) => {
-        if (error) {
-            res.status(401)
-            throw new Error("INVALID_REFRESH_TOKEN")
-        }
+    const accessToken = generateAccessToken({
+        id: user._id
+    })
 
-        const accessToken = generateAccessToken({
-            id: user._id
-        })
-
-        res.status(200).json({
-            status: true,
-            accessToken
-        })
-
+    res.status(200).json({
+        status: true,
+        accessToken
     })
 })
 
 const getUser = asyncHandler(async (req, res) => {
 
-    const user = await User.findById(req.user._id).populate('devices')
+    const user = await User.findById(req.user._id).populate('devices').select('-password -refreshToken')
     console.log(user)
     res.status(200).json({
         status: true,
@@ -348,7 +369,7 @@ const resetPassword = asyncHandler(async (req, res) => {
 
     let expiryAt = new Date()
     // expiryAt.setHours(expiryAt.getHours() + 24)
-    expiryAt.setMinutes(expiryAt.getMinutes() + 2)
+    expiryAt.setMinutes(expiryAt.getMinutes() + 15)
 
     const newToken = await Token.create({
         email,
@@ -385,12 +406,108 @@ const validateResetLink = asyncHandler(async (req, res) => {
     }
 
     // res.status(200)
-    res.render('resetPassword')
-    // res.status(200).json({
-    //     status: true,
-    //     message: "LINK_VALID",
-    //     isValid
-    // })
+    res.render('inputPassword', {
+        token,
+        apiUrl: env.ENV === 'dev' ? env.API_URL_DEV : env.API_URL_PROD
+    })
+})
+
+const newPasswordFromReset = asyncHandler(async (req, res) => {
+    console.log(req.body.token, req.body.new_password)
+    const {
+        token,
+        new_password,
+        confirm_new_password
+    } = req.body
+
+    if (!token || token == '') {
+        res.status(400)
+        // throw new Error("TOKEN_REQUIRED")
+        return res.render('failedResetPassword')
+    }
+
+    if (!new_password || new_password == '') {
+        res.status(400)
+        // throw new Error("NEW_PASSWORD_REQUIRED")
+        return res.render('failedResetPassword')
+    }
+
+    if (!confirm_new_password || confirm_new_password == '') {
+        res.status(400)
+        // throw new Error("NEW_PASSWORD_REQUIRED")
+        return res.render('failedResetPassword')
+    }
+
+    if (new_password !== confirm_new_password) {
+        res.status(400)
+        // throw new Error("PASSWORDS_NOT_MATCH")
+        return res.render('failedResetPassword')
+    }
+
+    if (new_password.trim().length === 0 || new_password.includes(" ")) {
+        res.status(400)
+        // throw new Error("PASSWORD_CONTAIN_SPACE")
+        return res.render('failedResetPassword')
+    }
+
+    const isTokenValid = await Token.findOne({
+        token
+    })
+
+    if (!isTokenValid) {
+        res.status(400)
+        // throw new Error("INVALID_TOKEN")
+        return res.render('tokenExpired')
+    }
+
+    if (new Date(isTokenValid.expiryAt) < Date.now()) {
+        res.status(400)
+        // throw new Error("EXPIRED")
+        return res.render('tokenExpired')
+    }
+
+    const user = await User.findOne({
+        email: isTokenValid.email
+    })
+
+    if (!user) {
+        res.status(400)
+        // throw new Error("INVALID_TOKEN")
+        return res.render('tokenExpired')
+    }
+
+    // make salt
+    let salt = await bcrypt.genSalt(12)
+    // hash the password
+    let hashedPassword = await bcrypt.hash(new_password, salt)
+
+    // update db
+    const updateDb = await User.updateOne({
+        _id: user._id
+    }, {
+        $set: {
+            password: hashedPassword
+        }
+    })
+
+    if (!updateDb) {
+        res.status(500)
+        // throw new Error("PASSWORD_CHANGE_FAILED")
+        return res.render('failedResetPassword')
+
+    }
+
+    const deleteTokenDb = await Token.findOneAndDelete({
+        token
+    })
+
+    if (!deleteTokenDb) {
+        console.log('delete token failed')
+        // res.status(500)
+        // throw new Error("DELETE_TOKEN_FAILED")
+    }
+
+    res.render('passwordSuccess')
 })
 
 module.exports = {
@@ -401,5 +518,6 @@ module.exports = {
     register,
     getUser,
     resetPassword,
-    validateResetLink
+    validateResetLink,
+    newPasswordFromReset
 }
