@@ -24,7 +24,7 @@ const session = async ({io, id, sessions, cronTask}) => {
 
     const pptOptions = {
         puppeteer: {
-            headless: false,
+            headless: true,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
