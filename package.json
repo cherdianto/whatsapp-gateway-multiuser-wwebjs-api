@@ -26,7 +26,7 @@
     "qrcode": "^1.5.1",
     "shortid": "^2.2.16",
     "socket.io": "^4.5.4",
-    "whatsapp-web.js": "^1.18.4",
+    "whatsapp-web.js": "^1.22.1",
     "wwebjs-mongo": "^1.1.0"
   },
   "devDependencies": {

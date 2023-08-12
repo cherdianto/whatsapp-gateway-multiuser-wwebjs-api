@@ -16,6 +16,7 @@ function generateApiKey() {
 }
 
 const addDevice = asyncHandler(async (req, res) => {
+    console.log('add device')
     // const userId = req.user._id
     const number = req.body.number
 
@@ -41,6 +42,7 @@ const addDevice = asyncHandler(async (req, res) => {
 
     newDevice.save(async (error, device) => {
         if (error) {
+            console.log(error.message)
             res.status(500)
             throw new Error("ADD_DEVICE_FAILED")
         }
@@ -52,6 +54,7 @@ const addDevice = asyncHandler(async (req, res) => {
         })
 
         if (!user) {
+            console.log('error disini')
             res.status(500)
             throw new Error("ADD_DEVICE_FAILED")
         }
