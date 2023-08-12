@@ -1,4 +1,5 @@
 .wwebjs_auth
+.wwebjs_cache
 
 # Dependency directories
 node_modules/
